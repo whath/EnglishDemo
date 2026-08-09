@@ -1,6 +1,10 @@
 package com.englishcoach60.domain.training
 
-import com.englishcoach60.domain.model.*
+import com.englishcoach60.domain.model.ConversationTurn
+import com.englishcoach60.domain.model.CorrectionType
+import com.englishcoach60.domain.model.ReviewRating
+import com.englishcoach60.domain.model.TrainingMetrics
+import com.englishcoach60.domain.model.TrainingStatus
 import kotlin.math.max
 import kotlin.math.min
 

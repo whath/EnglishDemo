@@ -1,17 +1,26 @@
 package com.englishcoach60.data.di
 
 import android.content.Context
-import com.englishcoach60.data.ai.*
-import com.englishcoach60.data.storage.*
-import com.englishcoach60.database.*
-import com.englishcoach60.domain.repository.*
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
+import com.englishcoach60.data.ai.AiRepositoryImpl
+import com.englishcoach60.data.ai.ScriptedConversationProvider
+import com.englishcoach60.data.storage.ExpressionRepositoryImpl
+import com.englishcoach60.data.storage.LessonRepositoryImpl
+import com.englishcoach60.data.storage.SettingsRepositoryImpl
+import com.englishcoach60.data.storage.TrainingRepositoryImpl
+import com.englishcoach60.database.CoachDao
+import com.englishcoach60.database.CoachDatabase
+import com.englishcoach60.domain.repository.AiRepository
+import com.englishcoach60.domain.repository.ExpressionRepository
+import com.englishcoach60.domain.repository.LessonRepository
+import com.englishcoach60.domain.repository.SettingsRepository
+import com.englishcoach60.domain.repository.TrainingRepository
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
-import kotlinx.serialization.json.Json
+import dagger.hilt.InstallIn
+import dagger.Module
+import dagger.Provides
 import javax.inject.Singleton
+import kotlinx.serialization.json.Json
 
 @Module
 @InstallIn(SingletonComponent::class)

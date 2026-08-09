@@ -4,7 +4,7 @@ import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.compose.runtime.*
+import androidx.compose.runtime.getValue
 import androidx.hilt.lifecycle.viewmodel.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.navigation3.rememberViewModelStoreNavEntryDecorator
@@ -12,7 +12,11 @@ import androidx.navigation3.runtime.entryProvider
 import androidx.navigation3.runtime.rememberNavBackStack
 import androidx.navigation3.runtime.rememberSaveableStateHolderNavEntryDecorator
 import androidx.navigation3.ui.NavDisplay
-import com.englishcoach60.app.navigation.*
+import com.englishcoach60.app.navigation.HomeRoute
+import com.englishcoach60.app.navigation.LibraryRoute
+import com.englishcoach60.app.navigation.SearchRoute
+import com.englishcoach60.app.navigation.SettingsRoute
+import com.englishcoach60.app.navigation.TrainingRoute
 import com.englishcoach60.app.presentation.home.HomeScreen
 import com.englishcoach60.app.presentation.home.HomeViewModel
 import com.englishcoach60.app.presentation.library.LibraryScreen
@@ -55,12 +59,6 @@ class MainActivity : ComponentActivity() {
                             )
                         }
                         entry<TrainingRoute> {
-                            val vm: TrainingViewModel = hiltViewModel()
-                            TrainingScreen(vm, onClose = { backStack.removeAt(backStack.lastIndex) }, onCompleted = {
-                                backStack.clear(); backStack.add(HomeRoute)
-                            })
-                        }
-                        entry<ReviewRoute> {
                             val vm: TrainingViewModel = hiltViewModel()
                             TrainingScreen(vm, onClose = { backStack.removeAt(backStack.lastIndex) }, onCompleted = {
                                 backStack.clear(); backStack.add(HomeRoute)

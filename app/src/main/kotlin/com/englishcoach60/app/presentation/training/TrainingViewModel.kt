@@ -2,16 +2,43 @@ package com.englishcoach60.app.presentation.training
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
-import com.englishcoach60.domain.model.*
-import com.englishcoach60.domain.repository.*
+import com.englishcoach60.app.presentation.toUserFacingAiMessage
+import com.englishcoach60.domain.model.AppSettings
+import com.englishcoach60.domain.model.ConversationContext
+import com.englishcoach60.domain.model.ConversationTurn
+import com.englishcoach60.domain.model.Correction
+import com.englishcoach60.domain.model.CorrectionType
+import com.englishcoach60.domain.model.DailyLesson
+import com.englishcoach60.domain.model.DailyReview
+import com.englishcoach60.domain.model.DailyReviewRequest
+import com.englishcoach60.domain.model.Expression
+import com.englishcoach60.domain.model.RetellingFeedback
+import com.englishcoach60.domain.model.RetellingRequest
+import com.englishcoach60.domain.model.ReviewRating
+import com.englishcoach60.domain.model.SourceType
+import com.englishcoach60.domain.model.TrainingMetrics
+import com.englishcoach60.domain.model.TrainingStep
+import com.englishcoach60.domain.model.WordLookup
+import com.englishcoach60.domain.repository.AiRepository
+import com.englishcoach60.domain.repository.ExpressionRepository
+import com.englishcoach60.domain.repository.LessonRepository
+import com.englishcoach60.domain.repository.SettingsRepository
+import com.englishcoach60.domain.repository.TrainingRepository
 import com.englishcoach60.domain.training.TrainingMetricsCalculator
 import com.englishcoach60.domain.training.TrainingPlan
-import com.englishcoach60.speech.*
+import com.englishcoach60.speech.AndroidSpeechSynthesizer
+import com.englishcoach60.speech.SpeechController
+import com.englishcoach60.speech.SpeechState
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
-import kotlinx.coroutines.flow.*
-import kotlinx.coroutines.launch
 import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.launch
 
 enum class SpeakingStatus { IDLE, PREPARING, LISTENING, RECOGNIZING, WAITING_FOR_AI, PLAYING_AI_SPEECH, ERROR }
 data class RepeatComparison(val target: String, val recognized: String)
@@ -150,11 +177,12 @@ class TrainingViewModel @Inject constructor(
                         )
                     }
                 }
-                .onFailure {
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
                     update {
                         it.copy(
                             wordLookupLoading = false,
-                            wordLookupMessage = "Couldn't look up that word. Check your connection and try again.",
+                            wordLookupMessage = error.toUserFacingAiMessage(),
                         )
                     }
                 }
@@ -514,11 +542,6 @@ class TrainingViewModel @Inject constructor(
     private fun update(block: (TrainingUiState) -> TrainingUiState) { mutableState.update(block) }
     private fun speechRate(state: TrainingUiState): Float =
         state.settings.ttsRateOverride ?: TrainingPlan.ttsRate(state.day, state.settings.difficulty)
-    private fun friendlyError(error: Throwable) = when {
-        error.message?.contains("401") == true -> "AI key was rejected. Check local.properties."
-        error.message?.contains("429") == true -> "AI service is busy. Try again shortly."
-        error.message?.contains("JSON", true) == true -> "AI response couldn't be read. Try again."
-        else -> "Something went wrong. Your progress is saved. Try again."
-    }
+    private fun friendlyError(error: Throwable) = error.toUserFacingAiMessage()
     override fun onCleared() { speech.cancel(); tts.stop() }
 }

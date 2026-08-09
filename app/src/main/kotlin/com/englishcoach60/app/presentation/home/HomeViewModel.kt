@@ -8,8 +8,11 @@ import com.englishcoach60.domain.repository.SettingsRepository
 import com.englishcoach60.domain.repository.TrainingRepository
 import com.englishcoach60.domain.training.TrainingPlan
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.*
 import javax.inject.Inject
+import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.SharingStarted
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.stateIn
 
 data class HomeUiState(
     val loading: Boolean = true,

@@ -1,16 +1,35 @@
 package com.englishcoach60.data.ai
 
 import com.englishcoach60.data.BuildConfig
-import com.englishcoach60.domain.model.*
+import com.englishcoach60.domain.error.AiFailureReason
+import com.englishcoach60.domain.error.AiServiceException
+import com.englishcoach60.domain.model.ConversationContext
+import com.englishcoach60.domain.model.ConversationReply
+import com.englishcoach60.domain.model.Correction
+import com.englishcoach60.domain.model.CorrectionType
+import com.englishcoach60.domain.model.DailyLesson
+import com.englishcoach60.domain.model.DailyLessonRequest
+import com.englishcoach60.domain.model.DailyReview
+import com.englishcoach60.domain.model.DailyReviewRequest
+import com.englishcoach60.domain.model.Expression
+import com.englishcoach60.domain.model.ListeningQuestion
+import com.englishcoach60.domain.model.RetellingFeedback
+import com.englishcoach60.domain.model.RetellingRequest
+import com.englishcoach60.domain.model.SpeakingScenario
+import com.englishcoach60.domain.model.WordLookup
 import com.englishcoach60.domain.repository.AiRepository
 import com.englishcoach60.domain.repository.SettingsRepository
-import com.englishcoach60.network.*
+import com.englishcoach60.network.AiJsonSanitizer
+import com.englishcoach60.network.ChatMessage
+import com.englishcoach60.network.ChatRequest
+import com.englishcoach60.network.DeepSeekApiFactory
+import java.io.IOException
+import java.net.SocketTimeoutException
 import kotlinx.coroutines.flow.first
+import kotlinx.serialization.json.Json
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.SerializationException
-import kotlinx.serialization.json.Json
 import retrofit2.HttpException
-import java.io.IOException
 
 class AiRepositoryImpl(
     private val settingsRepository: SettingsRepository,
@@ -59,7 +78,7 @@ class AiRepositoryImpl(
     }
 
     override suspend fun testConnection(): Result<Unit> = runCatching {
-        if (demo) error("No API key. Add DEEPSEEK_API_KEY to local.properties.")
+        if (demo) throw AiServiceException(AiFailureReason.MISSING_API_KEY)
         check(request("Return JSON only: {\"ok\":true}", .0, 30).isNotBlank()) { "Empty AI response" }
     }
 
@@ -75,10 +94,12 @@ class AiRepositoryImpl(
             } catch (error: Throwable) {
                 last = error
                 val retryable = error is IOException || (error is HttpException && error.code() in 500..599)
-                if (!retryable || attempt == 1 || (error is HttpException && error.code() == 401)) throw error
+                if (!retryable || attempt == 1 || (error is HttpException && error.code() == 401)) {
+                    throw error.toAiServiceException()
+                }
             }
         }
-        throw last ?: IllegalStateException("AI unavailable")
+        throw (last ?: IllegalStateException("AI unavailable")).toAiServiceException()
     }
 
     private inline fun <reified T> parse(raw: String): T = json.decodeFromString(AiJsonSanitizer.sanitize(raw))
@@ -96,9 +117,34 @@ class AiRepositoryImpl(
                 Invalid response:
                 ${first.take(8_000)}
             """.trimIndent()
-            parse(request(repairPrompt, temperature, maxTokens))
+            try {
+                parse(request(repairPrompt, temperature, maxTokens))
+            } catch (repairError: SerializationException) {
+                throw AiServiceException(AiFailureReason.INVALID_RESPONSE, repairError)
+            }
         }
     }
+}
+
+internal fun Throwable.toAiServiceException(): AiServiceException {
+    if (this is AiServiceException) return this
+    val reason = when (this) {
+        is SocketTimeoutException -> AiFailureReason.TIMEOUT
+        is IOException -> AiFailureReason.NETWORK
+        is SerializationException -> AiFailureReason.INVALID_RESPONSE
+        is HttpException -> when (code()) {
+            400, 404, 405, 409, 422 -> AiFailureReason.INVALID_REQUEST
+            401, 403 -> AiFailureReason.AUTHENTICATION
+            402 -> AiFailureReason.PAYMENT_REQUIRED
+            408, 504 -> AiFailureReason.TIMEOUT
+            429 -> AiFailureReason.RATE_LIMITED
+            in 500..599 -> AiFailureReason.SERVICE_UNAVAILABLE
+            else -> AiFailureReason.UNKNOWN
+        }
+        is IllegalStateException -> AiFailureReason.INVALID_RESPONSE
+        else -> AiFailureReason.UNKNOWN
+    }
+    return AiServiceException(reason, this)
 }
 
 @Serializable

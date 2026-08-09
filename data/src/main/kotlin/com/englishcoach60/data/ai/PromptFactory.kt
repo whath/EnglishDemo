@@ -1,7 +1,11 @@
 package com.englishcoach60.data.ai
 
-import com.englishcoach60.domain.model.*
 import com.englishcoach60.domain.language.containsHanCharacters
+import com.englishcoach60.domain.model.ConversationContext
+import com.englishcoach60.domain.model.CorrectionType
+import com.englishcoach60.domain.model.DailyLessonRequest
+import com.englishcoach60.domain.model.DailyReviewRequest
+import com.englishcoach60.domain.model.RetellingRequest
 import com.englishcoach60.domain.training.DifficultyProfiles
 import com.englishcoach60.domain.training.TrainingPlan
 

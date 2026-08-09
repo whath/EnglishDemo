@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<lint>
+    <!-- Packaged attribution for the speech engine and downloaded recognition model. -->
+    <issue id="UnusedResources">
+        <ignore path="src/main/res/raw/third_party_notices.txt" />
+    </issue>
+</lint>

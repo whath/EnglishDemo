@@ -12,7 +12,6 @@ android {
 
 dependencies {
     compileOnly(files("libs/sherpa-onnx-static-link-onnxruntime-1.13.4.aar"))
-    implementation(libs.androidx.core.ktx)
     implementation(libs.kotlinx.coroutines.android)
     testImplementation(libs.junit)
 }

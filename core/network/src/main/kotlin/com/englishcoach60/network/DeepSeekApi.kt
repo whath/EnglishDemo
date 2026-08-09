@@ -1,16 +1,16 @@
 package com.englishcoach60.network
 
-import kotlinx.serialization.SerialName
-import kotlinx.serialization.Serializable
+import java.util.concurrent.TimeUnit
 import kotlinx.serialization.json.Json
-import okhttp3.OkHttpClient
+import kotlinx.serialization.Serializable
+import kotlinx.serialization.SerialName
 import okhttp3.logging.HttpLoggingInterceptor
-import retrofit2.Retrofit
+import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.OkHttpClient
 import retrofit2.converter.kotlinx.serialization.asConverterFactory
 import retrofit2.http.Body
 import retrofit2.http.POST
-import okhttp3.MediaType.Companion.toMediaType
-import java.util.concurrent.TimeUnit
+import retrofit2.Retrofit
 
 @Serializable data class ChatMessage(val role: String, val content: String)
 @Serializable data class ResponseFormat(val type: String = "json_object")

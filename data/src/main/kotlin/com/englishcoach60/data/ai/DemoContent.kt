@@ -1,7 +1,14 @@
 package com.englishcoach60.data.ai
 
-import com.englishcoach60.domain.model.*
 import com.englishcoach60.domain.language.containsHanCharacters
+import com.englishcoach60.domain.model.ConversationReply
+import com.englishcoach60.domain.model.Correction
+import com.englishcoach60.domain.model.CorrectionType
+import com.englishcoach60.domain.model.DailyLesson
+import com.englishcoach60.domain.model.Expression
+import com.englishcoach60.domain.model.ListeningQuestion
+import com.englishcoach60.domain.model.SpeakingScenario
+import com.englishcoach60.domain.model.WordLookup
 
 object DemoContent {
     fun lookup(query: String): WordLookup {

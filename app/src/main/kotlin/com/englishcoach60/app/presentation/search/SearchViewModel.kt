@@ -2,6 +2,7 @@ package com.englishcoach60.app.presentation.search
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.englishcoach60.app.presentation.toUserFacingAiMessage
 import com.englishcoach60.domain.model.Expression
 import com.englishcoach60.domain.model.SourceType
 import com.englishcoach60.domain.model.WordLookup
@@ -9,13 +10,14 @@ import com.englishcoach60.domain.repository.AiRepository
 import com.englishcoach60.domain.repository.ExpressionRepository
 import com.englishcoach60.speech.AndroidSpeechSynthesizer
 import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.Job
+import javax.inject.Inject
+import kotlinx.coroutines.CancellationException
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
 data class SearchUiState(
     val query: String = "",
@@ -67,7 +69,10 @@ class SearchViewModel @Inject constructor(
             mutableState.update { it.copy(loading = true, result = null, message = null) }
             runCatching { aiRepository.lookupWord(query) }
                 .onSuccess { result -> mutableState.update { it.copy(loading = false, result = result) } }
-                .onFailure { mutableState.update { it.copy(loading = false, message = "Couldn't look up that word. Check your connection and try again.") } }
+                .onFailure { error ->
+                    if (error is CancellationException) return@onFailure
+                    mutableState.update { it.copy(loading = false, message = error.toUserFacingAiMessage()) }
+                }
         }
     }
 

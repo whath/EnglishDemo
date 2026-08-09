@@ -1,9 +1,16 @@
 package com.englishcoach60.app
 
 import androidx.compose.material3.Text
-import androidx.compose.runtime.*
-import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createComposeRule
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.junit4.v2.createComposeRule
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.onNodeWithText
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeRight
 import com.englishcoach60.app.presentation.training.RecallStep
 import com.englishcoach60.app.presentation.training.TrainingUiState
 import com.englishcoach60.designsystem.EnglishCoachTheme

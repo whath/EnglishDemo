@@ -4,11 +4,11 @@ import android.content.Context
 import com.englishcoach60.speech.AndroidSpeechSynthesizer
 import com.englishcoach60.speech.SherpaSpeechController
 import com.englishcoach60.speech.SpeechController
-import dagger.Module
-import dagger.Provides
-import dagger.hilt.InstallIn
 import dagger.hilt.android.qualifiers.ApplicationContext
 import dagger.hilt.components.SingletonComponent
+import dagger.hilt.InstallIn
+import dagger.Module
+import dagger.Provides
 import javax.inject.Singleton
 
 @Module

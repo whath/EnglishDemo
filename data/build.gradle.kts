@@ -30,7 +30,6 @@ dependencies {
     api(project(":domain"))
     implementation(project(":core:network"))
     implementation(project(":core:database"))
-    implementation(project(":core:speech"))
     implementation(libs.androidx.datastore)
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.kotlinx.serialization.json)

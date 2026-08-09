@@ -1,8 +1,11 @@
 package com.englishcoach60.data.storage
 
-import com.englishcoach60.database.*
-import com.englishcoach60.domain.model.*
-import com.englishcoach60.domain.repository.*
+import com.englishcoach60.database.CoachDao
+import com.englishcoach60.database.LessonEntity
+import com.englishcoach60.domain.model.DailyLesson
+import com.englishcoach60.domain.model.DailyLessonRequest
+import com.englishcoach60.domain.repository.AiRepository
+import com.englishcoach60.domain.repository.LessonRepository
 import kotlinx.serialization.json.Json
 
 class LessonRepositoryImpl(private val dao: CoachDao, private val ai: AiRepository, private val json: Json) : LessonRepository {

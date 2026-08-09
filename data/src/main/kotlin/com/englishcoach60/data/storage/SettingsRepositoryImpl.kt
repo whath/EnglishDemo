@@ -1,10 +1,14 @@
 package com.englishcoach60.data.storage
 
 import android.content.Context
-import androidx.datastore.preferences.core.*
+import androidx.datastore.preferences.core.edit
+import androidx.datastore.preferences.core.floatPreferencesKey
+import androidx.datastore.preferences.core.intPreferencesKey
+import androidx.datastore.preferences.core.stringPreferencesKey
 import androidx.datastore.preferences.preferencesDataStore
 import com.englishcoach60.data.BuildConfig
-import com.englishcoach60.domain.model.*
+import com.englishcoach60.domain.model.AppSettings
+import com.englishcoach60.domain.model.TrainingMode
 import com.englishcoach60.domain.repository.SettingsRepository
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.map

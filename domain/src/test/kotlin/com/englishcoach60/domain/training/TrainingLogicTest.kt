@@ -1,6 +1,9 @@
 package com.englishcoach60.domain.training
 
-import com.englishcoach60.domain.model.*
+import com.englishcoach60.domain.model.ConversationTurn
+import com.englishcoach60.domain.model.ReviewRating
+import com.englishcoach60.domain.model.TrainingMetrics
+import com.englishcoach60.domain.model.TrainingStatus
 import org.junit.Assert.assertEquals
 import org.junit.Test
 

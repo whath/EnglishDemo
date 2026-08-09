@@ -1,6 +1,22 @@
 package com.englishcoach60.domain.repository
 
-import com.englishcoach60.domain.model.*
+import com.englishcoach60.domain.model.AppSettings
+import com.englishcoach60.domain.model.ConversationContext
+import com.englishcoach60.domain.model.ConversationReply
+import com.englishcoach60.domain.model.ConversationTurn
+import com.englishcoach60.domain.model.DailyLesson
+import com.englishcoach60.domain.model.DailyLessonRequest
+import com.englishcoach60.domain.model.DailyReview
+import com.englishcoach60.domain.model.DailyReviewRequest
+import com.englishcoach60.domain.model.Expression
+import com.englishcoach60.domain.model.LearningProgress
+import com.englishcoach60.domain.model.RetellingFeedback
+import com.englishcoach60.domain.model.RetellingRequest
+import com.englishcoach60.domain.model.ReviewRating
+import com.englishcoach60.domain.model.TrainingMetrics
+import com.englishcoach60.domain.model.TrainingSession
+import com.englishcoach60.domain.model.TrainingStep
+import com.englishcoach60.domain.model.WordLookup
 import kotlinx.coroutines.flow.Flow
 
 interface AiRepository {

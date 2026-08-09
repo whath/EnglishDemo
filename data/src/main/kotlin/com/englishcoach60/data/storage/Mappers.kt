@@ -1,7 +1,17 @@
 package com.englishcoach60.data.storage
 
-import com.englishcoach60.database.*
-import com.englishcoach60.domain.model.*
+import com.englishcoach60.database.ConversationTurnEntity
+import com.englishcoach60.database.ExpressionEntity
+import com.englishcoach60.database.TrainingDayEntity
+import com.englishcoach60.domain.model.ConversationTurn
+import com.englishcoach60.domain.model.Correction
+import com.englishcoach60.domain.model.CorrectionType
+import com.englishcoach60.domain.model.Expression
+import com.englishcoach60.domain.model.SourceType
+import com.englishcoach60.domain.model.TrainingMetrics
+import com.englishcoach60.domain.model.TrainingSession
+import com.englishcoach60.domain.model.TrainingStatus
+import com.englishcoach60.domain.model.TrainingStep
 
 fun ExpressionEntity.toDomain() = Expression(expression, meaningZh, example, sourceDay, SourceType.valueOf(sourceType), masteryLevel, pinned, nextReviewAt, intervalDays)
 fun Expression.toEntity(now: Long = System.currentTimeMillis()) = ExpressionEntity(
