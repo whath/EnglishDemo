@@ -20,11 +20,17 @@ class TrainingLogicTest {
     }
 
     @Test fun difficultyChangesListeningLoadAndSpeechRateWithinBounds() {
-        assertEquals(60..80, TrainingPlan.listeningWordRange(1, 1))
-        assertEquals(90..110, TrainingPlan.listeningWordRange(1, 4))
-        assertEquals(.78f, TrainingPlan.ttsRate(1, 1), .001f)
-        assertEquals(.95f, TrainingPlan.ttsRate(1, 4), .001f)
-        assertEquals("Challenge", DifficultyProfiles.get(99).name)
+        assertEquals(110..140, TrainingPlan.listeningWordRange(1, 1))
+        assertEquals(170..200, TrainingPlan.listeningWordRange(1, 4))
+        assertEquals(.95f, TrainingPlan.ttsRate(1, 1), .001f)
+        assertEquals(1.1f, TrainingPlan.ttsRate(1, 4), .001f)
+        assertEquals("University Foundation", DifficultyProfiles.get(-1).name)
+        assertEquals("Professional Challenge", DifficultyProfiles.get(99).name)
+    }
+
+    @Test fun listenAndRepeatUsesExactlyTwoSentences() {
+        val sentences = TrainingPlan.repeatSentences("First example. Second example! Third example? Fourth example.")
+        assertEquals(listOf("First example.", "Second example!"), sentences)
     }
 
     @Test fun metricsUseRealEvidence() {

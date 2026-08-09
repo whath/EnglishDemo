@@ -1,6 +1,7 @@
 package com.englishcoach60.data.ai
 
 import com.englishcoach60.domain.model.*
+import com.englishcoach60.domain.language.containsHanCharacters
 import com.englishcoach60.domain.training.DifficultyProfiles
 import com.englishcoach60.domain.training.TrainingPlan
 
@@ -9,10 +10,10 @@ object DailyLessonPromptFactory {
         val range = TrainingPlan.listeningWordRange(request.day, request.difficulty)
         val profile = DifficultyProfiles.get(request.difficulty)
         return """
-            You are the private English speaking coach for one Chinese adult learner at beginner to elementary level.
+            You are the private English speaking coach for one Chinese adult learner whose minimum level is university foundation English (CEFR B1).
             Current day: ${request.day}; phase: ${TrainingPlan.phase(request.day)}; topic: ${request.topic}; difficulty: ${profile.level} (${profile.name}).
             Difficulty guidance: ${profile.promptGuidance}
-            Listening word range: ${range.first}-${range.last}. Use common spoken English and reusable phrases.
+            Listening word range: ${range.first}-${range.last}. Keep every task at or above CEFR B1 and follow the selected profile exactly.
             Exactly five expressions and exactly three multiple-choice listening questions. Return JSON only.
             JSON: {"title":"","objectiveZh":"","listeningText":"","translationZh":"","expressions":[{"expression":"","meaningZh":"","example":""}],"questions":[{"question":"","options":["","",""] ,"answerIndex":0}],"speakingScenario":{"aiRole":"","userRole":"","goal":"","openingLine":""},"retellingPrompt":""}
         """.trimIndent()
@@ -31,14 +32,16 @@ object ConversationPromptFactory {
             .joinToString("; ") { "${it.original} -> ${it.corrected}" }
             .ifBlank { "None recorded yet" }
         return """
-        You are a real conversation partner, not a lecturer. Day ${context.day}, difficulty ${profile.level} (${profile.name}), topic ${context.topic}.
+        You are a real conversation partner, not a lecturer. The learner starts at CEFR B1 university foundation English. Day ${context.day}, difficulty ${profile.level} (${profile.name}), topic ${context.topic}.
         Difficulty guidance: ${profile.promptGuidance}
         You are ${context.scenario.aiRole}; learner is ${context.scenario.userRole}; goal: ${context.scenario.goal}.
         Target expressions: ${context.targetExpressions.joinToString()}.
         Recent conversation (up to 10 turns):
         $history
         Recent meaningful mistakes: $recurringMistakes
-        Keep replies to at most $maxSentences short sentence(s), ask realistic follow-up questions, correct only meaningful mistakes, never invent pronunciation feedback.
+        Keep replies to at most $maxSentences short sentence(s), ask realistic follow-up questions, and never invent pronunciation feedback.
+        Analyze every user message for grammar. If there is any real grammar error, return type "MINOR" for a small local error or "IMPORTANT" when it affects meaning or fluency; copy the faulty wording to original, provide a complete corrected sentence, and explain it briefly in Chinese. If there is no clear grammar error, return type "NONE", keep corrected empty, and do not invent an error.
+        betterExpression is mandatory and must never be empty: always provide one natural, reusable English alternative that preserves the user's meaning without adding facts, even when the original grammar is already correct.
         Continue naturally from the recent conversation instead of restarting the scenario.
         User said: ${context.userMessage}
         Return JSON only: {"replyEnglish":"","correction":{"type":"NONE","original":"","corrected":"","explanationZh":""},"betterExpression":"","usedTargetExpressions":[],"continueConversation":true}
@@ -78,12 +81,28 @@ object DailyReviewPromptFactory {
 }
 
 object WordLookupPromptFactory {
-    fun create(query: String) = """
-        You are a concise English dictionary for a Chinese beginner-to-elementary learner.
+    fun create(query: String): String {
+        val direction = if (query.containsHanCharacters()) {
+            """
+            This is a Chinese-to-English lookup.
+            The "word" value MUST be the most common natural English equivalent and MUST NOT contain Chinese characters.
+            Keep "meaningZh" as a concise Chinese explanation of the source meaning.
+            """.trimIndent()
+        } else {
+            """
+            This is an English-to-Chinese lookup.
+            Keep the normalized English word or expression in "word".
+            The "meaningZh" value MUST be a clear, natural Chinese translation and MUST NOT be empty.
+            """.trimIndent()
+        }
+        return """
+        You are a concise English dictionary for a Chinese university-level English learner (CEFR B1 or above).
         Look up this word or short expression: $query
-        The query may be English or Chinese. If it is Chinese, return the most common natural English equivalent as "word".
+        $direction
         Use a standard IPA pronunciation. Give one natural, practical example that is easy to reuse in conversation.
+        The example and all related expressions must be English. The exampleZh value must be Chinese.
         Keep the Chinese meaning and example translation concise. Return JSON only.
         JSON: {"word":"","phonetic":"","partOfSpeech":"","meaningZh":"","definitionEnglish":"","example":"","exampleZh":"","relatedExpressions":["",""]}
     """.trimIndent()
+    }
 }

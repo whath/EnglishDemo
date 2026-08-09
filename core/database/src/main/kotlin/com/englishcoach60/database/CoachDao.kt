@@ -28,6 +28,30 @@ interface CoachDao {
     @Query("UPDATE training_days SET difficulty = :difficulty WHERE day = :day")
     suspend fun updateDifficulty(day: Int, difficulty: Int)
 
+    @Query("DELETE FROM conversation_turns WHERE day = :day")
+    suspend fun clearTurnsForDay(day: Int)
+
+    @Transaction
+    suspend fun resetTrainingForDifficulty(day: Int, difficulty: Int, step: String) {
+        val current = trainingDay(day) ?: return
+        upsertTrainingDay(
+            current.copy(
+                difficulty = difficulty,
+                currentStep = step,
+                listeningCorrect = 0,
+                listeningTotal = 0,
+                speakingMillis = 0,
+                responseDelayMedianMs = 0,
+                averageWordsPerTurn = 0.0,
+                importantCorrections = 0,
+                userTurnCount = 0,
+                targetExpressionsUsed = 0,
+                retellingWordCount = 0,
+            ),
+        )
+        clearTurnsForDay(day)
+    }
+
     @Query("SELECT * FROM lessons WHERE day = :day")
     suspend fun lesson(day: Int): LessonEntity?
 

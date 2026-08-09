@@ -17,6 +17,7 @@ interface TrainingRepository {
     suspend fun startOrResume(day: Int, topic: String, difficulty: Int): TrainingSession
     suspend fun updateStep(day: Int, step: TrainingStep)
     suspend fun updateDifficulty(day: Int, difficulty: Int)
+    suspend fun resetForDifficulty(day: Int, difficulty: Int, step: TrainingStep)
     suspend fun updateMetrics(day: Int, metrics: TrainingMetrics)
     suspend fun saveTurn(turn: ConversationTurn)
     suspend fun loadTurns(day: Int): List<ConversationTurn>

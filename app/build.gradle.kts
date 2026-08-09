@@ -41,6 +41,7 @@ android {
 }
 
 dependencies {
+    implementation(files("../core/speech/libs/sherpa-onnx-static-link-onnxruntime-1.13.4.aar"))
     implementation(project(":domain"))
     implementation(project(":data"))
     implementation(project(":core:designsystem"))

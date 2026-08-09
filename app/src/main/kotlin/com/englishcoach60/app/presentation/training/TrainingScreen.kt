@@ -1,7 +1,10 @@
 package com.englishcoach60.app.presentation.training
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.Settings
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -12,10 +15,12 @@ import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.slideOutHorizontally
 import androidx.compose.animation.togetherWith
 import androidx.compose.animation.core.tween
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.Tune
 import androidx.compose.material3.*
@@ -23,6 +28,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -56,7 +62,7 @@ fun TrainingScreen(viewModel: TrainingViewModel, onClose: () -> Unit, onComplete
             Column(Modifier.statusBarsPadding().padding(horizontal = 12.dp, vertical = 6.dp)) {
                 Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                     if (state.step == TrainingStep.RECALL) Spacer(Modifier.size(48.dp))
-                    else IconButton(onClick = viewModel::previousStep) { Icon(Icons.Outlined.ArrowBack, "Previous step") }
+                    else IconButton(onClick = viewModel::previousStep) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Previous step") }
                     Column(Modifier.weight(1f), horizontalAlignment = Alignment.CenterHorizontally) {
                         Text("DAY ${state.day}", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.primary)
                         Text(stepName(state.step), style = MaterialTheme.typography.titleMedium)
@@ -78,10 +84,19 @@ fun TrainingScreen(viewModel: TrainingViewModel, onClose: () -> Unit, onComplete
                     Spacer(Modifier.width(8.dp))
                     AssistChip(
                         onClick = { showDifficulty = true },
-                        label = { Text("L${state.settings.difficulty} · ${DifficultyProfiles.get(state.settings.difficulty).name}") },
+                        label = {
+                            Text(
+                                "L${state.settings.difficulty} · ${compactDifficultyName(state.settings.difficulty)}",
+                                maxLines = 1,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        },
                         leadingIcon = { Icon(Icons.Outlined.Tune, null, Modifier.size(16.dp)) },
+                        modifier = Modifier.widthIn(max = 248.dp),
                     )
                 }
+                Spacer(Modifier.height(4.dp))
+                TrainingWordSearchBar(state, viewModel)
             }
             }
         },
@@ -111,12 +126,53 @@ fun TrainingScreen(viewModel: TrainingViewModel, onClose: () -> Unit, onComplete
     if (showClose) AlertDialog(onDismissRequest = { showClose = false }, title = { Text("Your progress is saved") },
         text = { Text("Leave training?") }, confirmButton = { TextButton(onClick = onClose) { Text("Leave") } },
         dismissButton = { TextButton(onClick = { showClose = false }) { Text("Keep Training") } })
-    if (permissionDenied) AlertDialog(onDismissRequest = { permissionDenied = false }, title = { Text("Microphone permission needed") },
-        text = { Text("Microphone permission is needed for speaking practice. You can still use the keyboard.") },
-        confirmButton = { TextButton(onClick = { permissionDenied = false }) { Text("Use keyboard") } })
-    state.error?.let { message -> AlertDialog(onDismissRequest = viewModel::clearError, title = { Text("Couldn't continue") }, text = { Text(message) },
-        confirmButton = { TextButton(onClick = viewModel::clearError) { Text("OK") } },
-        dismissButton = { TextButton(onClick = viewModel::retryLoad) { Text("Try again") } }) }
+    TrainingWordLookupDialog(state, viewModel)
+    if (permissionDenied) AlertDialog(
+        onDismissRequest = { permissionDenied = false },
+        title = { Text("Microphone permission needed") },
+        text = { Text("Allow microphone access in system settings to use speech recognition. Keyboard input remains available.") },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    permissionDenied = false
+                    context.startActivity(
+                        Intent(
+                            Settings.ACTION_APPLICATION_DETAILS_SETTINGS,
+                            Uri.fromParts("package", context.packageName, null),
+                        ),
+                    )
+                },
+            ) { Text("Open settings") }
+        },
+        dismissButton = { TextButton(onClick = { permissionDenied = false }) { Text("Use keyboard") } },
+    )
+    state.error?.let { message ->
+        val isSpeechError = message.contains("speech", ignoreCase = true) ||
+            message.contains("microphone", ignoreCase = true) ||
+            message.contains("recognition", ignoreCase = true)
+        AlertDialog(
+            onDismissRequest = viewModel::clearError,
+            title = { Text(if (isSpeechError) "Speech recognition unavailable" else "Couldn't continue") },
+            text = { Text(message) },
+            confirmButton = {
+                TextButton(onClick = viewModel::clearError) {
+                    Text(if (isSpeechError) "Use keyboard" else "OK")
+                }
+            },
+            dismissButton = {
+                TextButton(
+                    onClick = {
+                        if (isSpeechError) {
+                            viewModel.clearError()
+                            startMic()
+                        } else {
+                            viewModel.retryLoad()
+                        }
+                    },
+                ) { Text("Try again") }
+            },
+        )
+    }
 
     if (showDifficulty) {
         var pendingDifficulty by remember(showDifficulty) { mutableIntStateOf(state.settings.difficulty) }
@@ -125,19 +181,27 @@ fun TrainingScreen(viewModel: TrainingViewModel, onClose: () -> Unit, onComplete
             containerColor = MaterialTheme.colorScheme.surface,
         ) {
             Column(
-                Modifier.fillMaxWidth().padding(horizontal = 20.dp).padding(bottom = 24.dp).navigationBarsPadding(),
-                verticalArrangement = Arrangement.spacedBy(14.dp),
+                Modifier.fillMaxWidth()
+                    .verticalScroll(rememberScrollState())
+                    .padding(horizontal = 20.dp)
+                    .navigationBarsPadding()
+                    .padding(bottom = 12.dp),
+                verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
                 Text("Tune today's difficulty", style = MaterialTheme.typography.headlineSmall)
                 Text(
-                    if (state.step == TrainingStep.RECALL) "Your lesson will be refreshed before listening starts."
-                    else "The new level applies to audio pace and the next AI reply. Completed material stays unchanged.",
+                    if (state.step == TrainingStep.RECALL) {
+                        "The complete lesson will be regenerated for the selected level before listening starts."
+                    } else {
+                        "The complete lesson will be regenerated for the selected level. Current lesson progress will restart from Listening."
+                    },
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
                 DifficultyCardPager(
                     selectedLevel = pendingDifficulty,
                     onDifficultyChange = { pendingDifficulty = it },
                     modifier = Modifier.fillMaxWidth(),
+                    compact = true,
                 )
                 Button(
                     onClick = { viewModel.setDifficulty(pendingDifficulty); showDifficulty = false },
@@ -151,4 +215,11 @@ fun TrainingScreen(viewModel: TrainingViewModel, onClose: () -> Unit, onComplete
 private fun stepName(step: TrainingStep) = when (step) {
     TrainingStep.RECALL -> "Recall"; TrainingStep.LISTENING -> "Listening"; TrainingStep.REPEAT -> "Listen & Repeat"
     TrainingStep.SPEAKING -> "Speaking"; TrainingStep.RETELLING -> "Retelling"; TrainingStep.REVIEW -> "Daily Review"
+}
+
+private fun compactDifficultyName(level: Int) = when (level.coerceIn(1, 4)) {
+    1 -> "University Foundation"
+    2 -> "University Plus"
+    3 -> "Advanced"
+    else -> "Professional Challenge"
 }

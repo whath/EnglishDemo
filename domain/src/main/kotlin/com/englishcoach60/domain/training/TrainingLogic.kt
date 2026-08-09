@@ -6,8 +6,8 @@ import kotlin.math.min
 
 object TrainingPlan {
     private val topics = listOf(
-        "Introduce Yourself", "Name, Hometown and Basic Information", "My Daily Routine", "Time and Schedule", "Likes and Dislikes",
-        "Family and Friends", "Food and Drinks", "Shopping and Prices", "Places and Asking Directions", "Foundation Review",
+        "Introduce Yourself and Your Academic Background", "Campus, Hometown and City Life", "Study and Work Routines", "Scheduling and Priorities", "Preferences and Reasons",
+        "Relationships and Collaboration", "Food, Health and Culture", "Consumer Choices and Comparisons", "Explaining Places and Directions", "University Foundation Review",
         "Restaurant", "Coffee Shop", "Taxi / Ride", "Hotel Check-in", "Airport Check-in", "Security and Boarding", "Travel Problems",
         "Ask for Help", "Doctor / Pharmacy Basic Communication", "Travel Simulation", "Small Talk", "Weekend", "Hobbies", "Invitation",
         "Phone / Video Call", "Future Plans", "Past Experiences", "Explain a Problem", "Give an Opinion", "Social Conversation Review",
@@ -20,32 +20,54 @@ object TrainingPlan {
 
     fun topic(day: Int) = topics[(day.coerceIn(1, 60) - 1)]
     fun phase(day: Int) = when (day) {
-        in 1..10 -> "Foundation"
-        in 11..20 -> "Survival English"
-        in 21..30 -> "Social English"
+        in 1..10 -> "University Foundation"
+        in 11..20 -> "Practical Communication"
+        in 21..30 -> "Social and Academic English"
         in 31..40 -> "Android Work English I"
         in 41..50 -> "Android Work English II"
         else -> "Independent Conversation"
     }
     fun listeningWordRange(day: Int) = when (day) {
-        in 1..10 -> 70..90
-        in 11..20 -> 80..110
-        in 21..30 -> 90..120
-        in 31..40 -> 100..130
-        in 41..50 -> 110..145
-        else -> 120..160
+        in 1..10 -> 110..140
+        in 11..20 -> 125..160
+        in 21..30 -> 140..180
+        in 31..40 -> 155..195
+        in 41..50 -> 170..215
+        else -> 185..235
     }
     fun listeningWordRange(day: Int, difficulty: Int): IntRange {
         val base = listeningWordRange(day)
-        val offset = when (difficulty.coerceIn(1, 4)) { 1 -> -10; 3 -> 10; 4 -> 20; else -> 0 }
-        return (base.first + offset).coerceAtLeast(55)..(base.last + offset)
+        val offset = when (difficulty.coerceIn(1, 4)) {
+            1 -> 0
+            2 -> 20
+            3 -> 40
+            else -> 60
+        }
+        return (base.first + offset)..(base.last + offset)
     }
     fun speakingTargetMinutes(day: Int) = when (day) { in 1..10 -> 8; in 11..30 -> 12; else -> 15 }
-    fun ttsRate(day: Int) = when (day) { in 1..10 -> .85f; in 11..20 -> .9f; in 21..30 -> .95f; else -> 1f }
-    fun ttsRate(day: Int, difficulty: Int): Float {
-        val adjustment = when (difficulty.coerceIn(1, 4)) { 1 -> -.07f; 3 -> .05f; 4 -> .1f; else -> 0f }
-        return (ttsRate(day) + adjustment).coerceIn(.78f, 1.1f)
+    fun ttsRate(day: Int) = when (day) {
+        in 1..10 -> .95f
+        in 11..20 -> 1f
+        in 21..30 -> 1.03f
+        in 31..40 -> 1.06f
+        in 41..50 -> 1.08f
+        else -> 1.1f
     }
+    fun ttsRate(day: Int, difficulty: Int): Float {
+        val adjustment = when (difficulty.coerceIn(1, 4)) {
+            1 -> 0f
+            2 -> .05f
+            3 -> .1f
+            else -> .15f
+        }
+        return (ttsRate(day) + adjustment).coerceIn(.95f, 1.2f)
+    }
+
+    fun repeatSentences(listeningText: String): List<String> = listeningText
+        .split(Regex("(?<=[.!?])\\s+"))
+        .filter { it.isNotBlank() }
+        .take(2)
 }
 
 data class DifficultyProfile(
@@ -57,10 +79,10 @@ data class DifficultyProfile(
 
 object DifficultyProfiles {
     private val profiles = listOf(
-        DifficultyProfile(1, "Gentle", "Slower audio, shorter phrases, more support", "Use very short common sentences, slower pacing, explicit context, and generous scaffolding."),
-        DifficultyProfile(2, "Balanced", "Everyday pace with clear, reusable language", "Use common spoken English at a clear everyday pace with moderate scaffolding."),
-        DifficultyProfile(3, "Stretch", "Longer replies, less scaffolding, faster audio", "Use slightly longer natural turns, less scaffolding, and occasional unfamiliar but practical phrasing."),
-        DifficultyProfile(4, "Challenge", "Natural pace, richer language, sharper follow-ups", "Use natural conversational pace, richer phrasing, fewer hints, and more demanding follow-up questions."),
+        DifficultyProfile(1, "University Foundation", "B1 core English with complete explanations and practical vocabulary", "Use CEFR B1 university foundation English. Require complete sentences, reasons, comparisons, and reusable academic or everyday vocabulary. Keep support clear without simplifying below B1."),
+        DifficultyProfile(2, "University Plus", "B1+ extended responses with denser listening and less scaffolding", "Use CEFR B1+ English. Include connected ideas, paraphrasing, common collocations, and follow-up questions that require explanation rather than one-line answers."),
+        DifficultyProfile(3, "Advanced Communication", "B2 natural pace, nuanced opinions, and workplace-ready language", "Use CEFR B2 English at a natural pace. Include nuanced opinions, inference, idiomatic but broadly useful phrasing, and realistic academic or workplace interaction with limited hints."),
+        DifficultyProfile(4, "Professional Challenge", "B2+/C1 precision, complex scenarios, and demanding follow-ups", "Use upper-B2 to C1 English. Require precise argument, synthesis, tactful disagreement, richer collocations, and complex professional or social follow-ups without learner scaffolding."),
     )
 
     fun get(level: Int): DifficultyProfile = profiles[level.coerceIn(1, 4) - 1]

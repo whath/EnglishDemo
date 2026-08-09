@@ -3,6 +3,7 @@ package com.englishcoach60.database
 import androidx.room3.Entity
 import androidx.room3.Index
 import androidx.room3.PrimaryKey
+import androidx.room3.ColumnInfo
 
 @Entity(tableName = "training_days")
 data class TrainingDayEntity(
@@ -27,6 +28,8 @@ data class TrainingDayEntity(
 @Entity(tableName = "lessons")
 data class LessonEntity(
     @PrimaryKey val day: Int,
+    @ColumnInfo(defaultValue = "1") val difficulty: Int = 1,
+    @ColumnInfo(defaultValue = "0") val contentVersion: Int = 0,
     val title: String,
     val objectiveZh: String,
     val listeningText: String,

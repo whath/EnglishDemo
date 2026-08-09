@@ -12,7 +12,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowForward
+import androidx.compose.material.icons.automirrored.outlined.ArrowForward
 import androidx.compose.material.icons.outlined.AutoStories
 import androidx.compose.material.icons.outlined.LocalFireDepartment
 import androidx.compose.material.icons.outlined.Search
@@ -82,8 +82,27 @@ fun HomeScreen(
                         Text(if (state.programComplete) "60 Days Complete" else "Day ${day.toString().padStart(2, '0')}", style = MaterialTheme.typography.displaySmall)
                     }
                 }
-                if (!state.programComplete) Text("of 60", style = MaterialTheme.typography.titleMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                if (!state.settings.hasApiKey) AssistChip(onClick = onSettings, label = { Text("Demo") })
+                if (!state.programComplete || !state.settings.hasApiKey) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        if (!state.programComplete) {
+                            Text(
+                                "of 60",
+                                style = MaterialTheme.typography.titleMedium,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
+                        if (!state.settings.hasApiKey) {
+                            AssistChip(
+                                onClick = onSettings,
+                                label = { Text("Demo") },
+                                modifier = Modifier.heightIn(min = 32.dp),
+                            )
+                        }
+                    }
+                }
             }
 
             SearchEntry(onClick = onSearch)
@@ -117,7 +136,7 @@ fun HomeScreen(
                             shape = MaterialTheme.shapes.medium,
                         ) {
                             Text(if (state.isResume) "Continue Training" else "Start Training", fontWeight = FontWeight.SemiBold)
-                            Spacer(Modifier.width(8.dp)); Icon(Icons.Outlined.ArrowForward, null)
+                            Spacer(Modifier.width(8.dp)); Icon(Icons.AutoMirrored.Outlined.ArrowForward, null)
                         }
                     }
                 }
@@ -135,7 +154,7 @@ fun HomeScreen(
                             Text("Ready for review", style = MaterialTheme.typography.titleMedium)
                             Text("${state.progress.dueExpressionCount} expressions are due", style = MaterialTheme.typography.bodyMedium)
                         }
-                        Icon(Icons.Outlined.ArrowForward, "Review")
+                        Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Review")
                     }
                 }
             }
@@ -174,9 +193,9 @@ private fun SearchEntry(onClick: () -> Unit) {
             Spacer(Modifier.width(12.dp))
             Column(Modifier.weight(1f)) {
                 Text("Look up a word", style = MaterialTheme.typography.titleMedium)
-                Text("Pronunciation, meaning & examples", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
+                Text("中文 → English · English → 中文", color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.bodyMedium)
             }
-            Icon(Icons.Outlined.ArrowForward, "Open dictionary", tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.AutoMirrored.Outlined.ArrowForward, "Open dictionary", tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -203,8 +222,8 @@ private fun MetricCard(label: String, value: String, unit: String, modifier: Mod
 private fun trainingMinutes(mode: String) = when (mode) { "QUICK" -> 25; "INTENSIVE" -> 60; else -> 45 }
 
 private fun practicalGoal(day: Int) = when (day) {
-    1 -> "Introduce yourself with short, complete sentences."
-    in 2..10 -> "Build confidence with everyday foundation English."
+    1 -> "Present your background, responsibilities, and goals with supporting details."
+    in 2..10 -> "Build a strong university-level foundation for connected communication."
     in 11..20 -> "Handle common travel and service situations."
     in 21..30 -> "Keep a simple social conversation going."
     in 31..50 -> "Communicate clearly in Android development work."

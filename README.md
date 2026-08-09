@@ -8,24 +8,32 @@ Every day follows one guided flow:
 
 1. **Recall** — up to five due expressions, rated Again / Hard / Good.
 2. **Listening** — transcript hidden initially, sentence-chunk TTS, three comprehension questions.
-3. **Listen & Repeat** — five to seven sentences with Android speech recognition text comparison.
+3. **Listen & Repeat** — two example sentences with offline speech-recognition text comparison; each sentence or the complete step can be skipped.
 4. **Scenario Speaking** — microphone-first AI conversation, keyboard fallback, short replies, meaningful correction cards.
 5. **Retelling** — multiple short ASR segments combined for language feedback.
 6. **Daily Review** — real metrics, coaching, expressions, and tomorrow's focus.
+
+A compact Word Studio search stays available throughout all six training steps. Results open in a dialog with pronunciation, bilingual meaning, a reusable example, example audio, related expressions, and a save action. During scenario speaking, every user reply receives a dedicated grammar status and a natural alternative directly below its message bubble.
 
 Day 60 also compares the same real metrics with the saved Day 1 baseline; it does not invent an overall score.
 
 Day progression is based on completed sessions, not calendar dates. The next day is advanced only after the daily review, metrics, and expressions have been saved. Speaking targets rise from 8 minutes (Days 1–10) to 12 minutes (Days 11–30) and 15 minutes (Days 31–60); they are goals, not locks.
 
-The route is fixed rather than random: Foundation, Survival English, Social English, Android Work English I/II, and Independent Conversation. AI varies content within each day's topic.
+The route is fixed rather than random: University Foundation, Practical Communication, Social and Academic English, Android Work English I/II, and Independent Conversation. AI varies content within each day's topic.
 
 ## Word Studio
 
 The Home screen includes a bilingual word search. English or Chinese queries return an English headword, IPA pronunciation, part of speech, Chinese meaning, concise English definition, a bilingual practical example, and useful combinations. The word and example can be read aloud with Android TextToSpeech, and a result can be saved directly to My Expressions for later recall practice.
 
+## Speech Recognition
+
+Speech recognition uses sherpa-onnx 1.13.4 with the English NVIDIA Parakeet-TDT 0.6B v2 int8 model. The app records 16 kHz mono PCM directly and performs final transcription locally, so it does not depend on the device vendor's `SpeechRecognizer` service. This supports sentence repetition, open conversation, and multi-segment retelling through the same recognition path.
+
+On the first microphone use, the app downloads the pinned model revision (about 661 MB) into `noBackupFilesDir`. The UI shows progress; interrupted downloads resume with HTTP Range; every model file is checked by exact length and SHA-256 before an atomic rename. After that one-time download, recognition works offline. Raw audio remains in memory only and is discarded immediately after recognition. A keyboard path remains available throughout speaking and retelling.
+
 ## Adaptive Difficulty and Swipe Cards
 
-Training difficulty has four user-adjustable levels: Gentle, Balanced, Stretch, and Challenge. The swipeable difficulty cards in Settings define the adaptive baseline, while the level chip inside a session can tune today's lesson. Difficulty changes affect listening length, TextToSpeech pace, AI reply length, scaffolding, and follow-up complexity. A change made during Recall refreshes the lesson before Listening; later changes apply to upcoming audio and AI turns without erasing completed work.
+Training starts at university foundation English and offers four user-adjustable levels: University Foundation (B1), University Plus (B1+), Advanced Communication (B2), and Professional Challenge (B2+/C1). The swipeable difficulty cards in Settings define the adaptive baseline, while the level chip inside a session can tune today's lesson. Difficulty changes regenerate the complete lesson for the selected level. If a session has already moved beyond Recall, lesson-specific progress restarts from Listening so listening text, expressions, questions, speaking scenario, and retelling task cannot remain at the previous level.
 
 Revealed Recall cards also support gestures: swipe left for Again or right for Good. The visible Again / Hard / Good buttons remain available for accessibility and precise control.
 
@@ -53,7 +61,7 @@ The pure JVM `domain` module contains models, repository contracts, the 60-day p
 - `:core:designsystem` — calm light/dark theme, type, shapes, spacing, shared components.
 - `:core:network` — Retrofit 3, OkHttp, DeepSeek DTOs, JSON sanitizer.
 - `:core:database` — Room 3 entities, DAO, database, completion transaction.
-- `:core:speech` — Android SpeechRecognizer and TextToSpeech lifecycle/state.
+- `:core:speech` — direct microphone capture, sherpa-onnx/Parakeet offline ASR, resumable verified model delivery, and Android TextToSpeech lifecycle/state.
 
 ## Tech Stack
 
@@ -64,6 +72,7 @@ The pure JVM `domain` module contains models, repository contracts, the 60-day p
 - Room 3.0.1 with KSP2; DataStore 1.2.1
 - Hilt 2.60.1 with AGP legacy-kapt 9.3.1; AndroidX Hilt 1.4.0
 - Retrofit 3.0.0, OkHttp, kotlinx.serialization
+- sherpa-onnx 1.13.4; NVIDIA Parakeet-TDT 0.6B v2 int8 English model
 
 ## API Key Setup
 

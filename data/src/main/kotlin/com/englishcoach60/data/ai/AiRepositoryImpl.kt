@@ -20,9 +20,9 @@ class AiRepositoryImpl(
     private val demo get() = BuildConfig.DEEPSEEK_API_KEY.isBlank()
 
     override suspend fun generateDailyLesson(request: DailyLessonRequest): DailyLesson {
-        if (demo) return DemoContent.day1(request.day, request.topic)
+        if (demo) return DemoContent.lesson(request.day, request.topic, request.difficulty)
         val payload = structuredRequest<LessonPayload>(DailyLessonPromptFactory.create(request), .6, 1800)
-        return payload.toDomain(request.day)
+        return payload.toDomain(request.day, request.difficulty)
     }
 
     override suspend fun continueConversation(context: ConversationContext): ConversationReply {
@@ -112,7 +112,7 @@ private data class LessonPayload(
     val speakingScenario: SpeakingScenario,
     val retellingPrompt: String,
 ) {
-    fun toDomain(day: Int) = DailyLesson(
+    fun toDomain(day: Int, difficulty: Int) = DailyLesson(
         day,
         title,
         objectiveZh,
@@ -122,6 +122,7 @@ private data class LessonPayload(
         questions.take(3),
         speakingScenario,
         retellingPrompt,
+        difficulty,
     )
 }
 

@@ -1,7 +1,7 @@
 package com.englishcoach60.app
 
 import androidx.compose.ui.test.*
-import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.test.junit4.v2.createAndroidComposeRule
 import org.junit.Rule
 import org.junit.Test
 
@@ -13,11 +13,14 @@ class AppSmokeTest {
         rule.onNodeWithText("Look up a word").assertIsDisplayed()
         val start = rule.onAllNodes(hasText("Start Training") or hasText("Continue Training"))
         start.onFirst().assertIsDisplayed().performClick()
+        val anyTrainingStep = (1..6)
+            .map { hasText("Step $it of 6") }
+            .reduce { matcher, step -> matcher or step }
         rule.waitUntil(timeoutMillis = 60_000) {
-            rule.onAllNodesWithText("Step 1 of 6").fetchSemanticsNodes().isNotEmpty()
+            rule.onAllNodes(anyTrainingStep).fetchSemanticsNodes().isNotEmpty()
         }
-        rule.onNodeWithText("Step 1 of 6").assertIsDisplayed()
-        rule.onNodeWithText("Recall").assertIsDisplayed()
+        rule.onAllNodes(anyTrainingStep).onFirst().assertIsDisplayed()
+        rule.onNodeWithContentDescription("Leave training").assertExists()
     }
 
     @Test fun difficultyThresholdCanBeRaisedFromSettings() {

@@ -23,7 +23,9 @@ fun RetellingStep(state: TrainingUiState, viewModel: TrainingViewModel, startMic
             }
         }
         MicButton(state.speakingStatus, startMic, viewModel::stopMic)
-        Text(if (state.speakingStatus == SpeakingStatus.LISTENING) "Listening…" else "${state.retellingSegments.size} segment(s) recorded")
+        Text(
+            speechActivityText(state, "${state.retellingSegments.size} segment(s) recorded"),
+        )
         OutlinedTextField(state.textInput, viewModel::setTextInput, Modifier.fillMaxWidth(), label = { Text("Keyboard fallback") }, placeholder = { Text("Type one retelling segment") },
             trailingIcon = { TextButton(viewModel::submitText, enabled = state.textInput.isNotBlank()) { Text("Add") } })
         state.retellingSegments.forEachIndexed { index, segment ->

@@ -8,11 +8,12 @@ import com.englishcoach60.domain.training.TrainingMetricsCalculator
 import com.englishcoach60.domain.training.TrainingPlan
 import com.englishcoach60.speech.*
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
-enum class SpeakingStatus { IDLE, LISTENING, RECOGNIZING, WAITING_FOR_AI, PLAYING_AI_SPEECH, ERROR }
+enum class SpeakingStatus { IDLE, PREPARING, LISTENING, RECOGNIZING, WAITING_FOR_AI, PLAYING_AI_SPEECH, ERROR }
 data class RepeatComparison(val target: String, val recognized: String)
 
 data class TrainingUiState(
@@ -38,6 +39,12 @@ data class TrainingUiState(
     val quickFixIndex: Int = 0,
     val quickFixRecognized: String? = null,
     val speakingStatus: SpeakingStatus = SpeakingStatus.IDLE,
+    val speechPreparationProgress: Int? = null,
+    val wordSearchQuery: String = "",
+    val wordLookupLoading: Boolean = false,
+    val wordLookupResult: WordLookup? = null,
+    val wordLookupDialogVisible: Boolean = false,
+    val wordLookupMessage: String? = null,
     val textInput: String = "",
     val retellingSegments: List<String> = emptyList(),
     val retellingFeedback: RetellingFeedback? = null,
@@ -47,7 +54,7 @@ data class TrainingUiState(
     val error: String? = null,
 ) {
     val stepNumber get() = TrainingStep.entries.indexOf(step) + 1
-    val repeatSentences get() = lesson?.listeningText.orEmpty().split(Regex("(?<=[.!?])\\s+")).filter { it.isNotBlank() }.take(7)
+    val repeatSentences get() = TrainingPlan.repeatSentences(lesson?.listeningText.orEmpty())
     val quickFixActive get() = quickFixes.isNotEmpty()
 }
 
@@ -58,7 +65,7 @@ class TrainingViewModel @Inject constructor(
     private val expressionRepository: ExpressionRepository,
     private val settingsRepository: SettingsRepository,
     private val aiRepository: AiRepository,
-    private val speech: AndroidSpeechController,
+    private val speech: SpeechController,
     private val tts: AndroidSpeechSynthesizer,
 ) : ViewModel() {
     private val mutableState = MutableStateFlow(TrainingUiState())
@@ -70,51 +77,163 @@ class TrainingViewModel @Inject constructor(
     private var aiRequestInFlight = false
     private var lastSubmittedText = ""
     private var lastSubmittedAt = 0L
+    private var wordLookupJob: Job? = null
 
     init {
         load()
         viewModelScope.launch {
             settingsRepository.observe().collect { settings ->
                 tts.setLocale(settings.englishAccent)
+                speech.setLocale(settings.englishAccent)
                 update { it.copy(settings = settings) }
             }
         }
         viewModelScope.launch {
             speech.state.collect { speechState ->
                 when (speechState) {
-                    SpeechState.Idle -> update { it.copy(speakingStatus = SpeakingStatus.IDLE) }
-                    SpeechState.Listening -> update { it.copy(speakingStatus = SpeakingStatus.LISTENING) }
-                    SpeechState.Processing -> update { it.copy(speakingStatus = SpeakingStatus.RECOGNIZING) }
+                    SpeechState.Idle -> update { it.copy(speakingStatus = SpeakingStatus.IDLE, speechPreparationProgress = null) }
+                    is SpeechState.Preparing -> update {
+                        it.copy(
+                            speakingStatus = SpeakingStatus.PREPARING,
+                            speechPreparationProgress = speechState.progressPercent,
+                            error = null,
+                        )
+                    }
+                    SpeechState.Listening -> update { it.copy(speakingStatus = SpeakingStatus.LISTENING, speechPreparationProgress = null) }
+                    SpeechState.Processing -> update { it.copy(speakingStatus = SpeakingStatus.RECOGNIZING, speechPreparationProgress = null) }
                     is SpeechState.Result -> { handleSpeechResult(speechState); speech.consumeResult() }
-                    is SpeechState.Error -> update { it.copy(speakingStatus = SpeakingStatus.ERROR, error = speechState.message) }
-                    SpeechState.Unavailable -> update { it.copy(speakingStatus = SpeakingStatus.ERROR, error = "Speech recognition is unavailable. Use the keyboard instead.") }
+                    is SpeechState.Error -> update {
+                        it.copy(
+                            speakingStatus = SpeakingStatus.ERROR,
+                            speechPreparationProgress = null,
+                            error = speechState.message,
+                        )
+                    }
                 }
             }
         }
     }
 
     fun retryLoad() = load()
+
+    fun setWordSearchQuery(value: String) {
+        update { it.copy(wordSearchQuery = value.take(80), wordLookupMessage = null) }
+    }
+
+    fun searchWord() {
+        val query = state.value.wordSearchQuery.trim()
+        if (query.isBlank()) {
+            update {
+                it.copy(
+                    wordLookupDialogVisible = true,
+                    wordLookupMessage = "Type an English or Chinese word first.",
+                )
+            }
+            return
+        }
+        wordLookupJob?.cancel()
+        wordLookupJob = viewModelScope.launch {
+            update {
+                it.copy(
+                    wordLookupDialogVisible = true,
+                    wordLookupLoading = true,
+                    wordLookupResult = null,
+                    wordLookupMessage = null,
+                )
+            }
+            runCatching { aiRepository.lookupWord(query) }
+                .onSuccess { result ->
+                    update {
+                        it.copy(
+                            wordLookupLoading = false,
+                            wordLookupResult = result,
+                        )
+                    }
+                }
+                .onFailure {
+                    update {
+                        it.copy(
+                            wordLookupLoading = false,
+                            wordLookupMessage = "Couldn't look up that word. Check your connection and try again.",
+                        )
+                    }
+                }
+        }
+    }
+
+    fun searchRelatedWord(value: String) {
+        setWordSearchQuery(value)
+        searchWord()
+    }
+
+    fun dismissWordLookup() {
+        update { it.copy(wordLookupDialogVisible = false, wordLookupMessage = null) }
+    }
+
+    fun speakLookupWord() = state.value.wordLookupResult?.let { playLookupAudio(it.word, .85f) }
+
+    fun speakLookupExample() = state.value.wordLookupResult?.let { playLookupAudio(it.example, .9f) }
+
+    private fun playLookupAudio(text: String, rate: Float) {
+        speech.cancel()
+        tts.onDone = null
+        tts.stop()
+        update {
+            it.copy(
+                listeningPlaying = false,
+                speakingStatus = SpeakingStatus.IDLE,
+                speechPreparationProgress = null,
+            )
+        }
+        tts.speak(text, rate)
+    }
+
+    fun saveLookupResult() {
+        val result = state.value.wordLookupResult ?: return
+        viewModelScope.launch {
+            expressionRepository.save(
+                Expression(
+                    expression = result.word,
+                    meaningZh = result.meaningZh,
+                    example = result.example,
+                    sourceDay = state.value.day,
+                    sourceType = SourceType.MANUAL,
+                    pinned = true,
+                ),
+            )
+            update { it.copy(wordLookupMessage = "Saved to My Expressions.") }
+        }
+    }
+
     private fun load() = viewModelScope.launch {
         update { it.copy(loading = true, error = null) }
         runCatching {
             val progress = trainingRepository.observeProgress().first()
             val settings = settingsRepository.observe().first()
             tts.setLocale(settings.englishAccent)
+            speech.setLocale(settings.englishAccent)
             val day = progress.activeSession?.day ?: progress.currentDay
             val session = trainingRepository.startOrResume(day, TrainingPlan.topic(day), settings.difficulty)
             val difficultyChanged = session.difficulty != settings.difficulty
-            if (difficultyChanged) trainingRepository.updateDifficulty(day, settings.difficulty)
-            val lesson = if (difficultyChanged && session.currentStep == TrainingStep.RECALL) {
+            val targetStep = if (difficultyChanged && session.currentStep != TrainingStep.RECALL) {
+                TrainingStep.LISTENING
+            } else {
+                session.currentStep
+            }
+            val lesson = if (difficultyChanged) {
                 lessonRepository.regenerate(day, session.topic, settings.difficulty)
             } else {
                 lessonRepository.getOrCreate(day, session.topic, settings.difficulty)
             }
+            if (difficultyChanged) {
+                trainingRepository.resetForDifficulty(day, settings.difficulty, targetStep)
+            }
             val due = expressionRepository.observeDue().first().take(5)
-            val turns = trainingRepository.loadTurns(day)
+            val turns = if (difficultyChanged) emptyList() else trainingRepository.loadTurns(day)
             val baseline = if (day == 60) trainingRepository.loadMetrics(1) else null
-            update { it.copy(loading = false, day = day, step = session.currentStep, lesson = lesson, settings = settings, dueExpressions = due, turns = turns, dayOneBaseline = baseline) }
-            if (session.currentStep == TrainingStep.SPEAKING && turns.isEmpty()) addOpeningLine(lesson)
-            if (session.currentStep == TrainingStep.REVIEW) createReview()
+            update { it.copy(loading = false, day = day, step = targetStep, lesson = lesson, settings = settings, dueExpressions = due, turns = turns, dayOneBaseline = baseline) }
+            if (targetStep == TrainingStep.SPEAKING && turns.isEmpty()) addOpeningLine(lesson)
+            if (targetStep == TrainingStep.REVIEW) createReview()
         }.onFailure { error -> update { it.copy(loading = false, error = friendlyError(error)) } }
     }
 
@@ -130,17 +249,50 @@ class TrainingViewModel @Inject constructor(
 
     fun setDifficulty(level: Int) = viewModelScope.launch {
         val difficulty = level.coerceIn(1, 4)
-        if (difficulty == state.value.settings.difficulty) return@launch
-        val updatedSettings = state.value.settings.copy(difficulty = difficulty)
-        settingsRepository.update(updatedSettings)
-        trainingRepository.updateDifficulty(state.value.day, difficulty)
-        update { it.copy(settings = updatedSettings) }
-        if (state.value.step == TrainingStep.RECALL) {
-            state.value.lesson ?: return@launch
-            update { it.copy(loading = true, error = null) }
-            runCatching { lessonRepository.regenerate(state.value.day, TrainingPlan.topic(state.value.day), difficulty) }
-                .onSuccess { lesson -> update { it.copy(loading = false, lesson = lesson) } }
-                .onFailure { error -> update { it.copy(loading = false, error = friendlyError(error)) } }
+        val current = state.value
+        if (current.loading || difficulty == current.settings.difficulty) return@launch
+
+        tts.stop()
+        speech.cancel()
+        update { it.copy(loading = true, error = null) }
+        try {
+            val lesson = lessonRepository.regenerate(current.day, TrainingPlan.topic(current.day), difficulty)
+            val targetStep = if (current.step == TrainingStep.RECALL) TrainingStep.RECALL else TrainingStep.LISTENING
+            val updatedSettings = current.settings.copy(difficulty = difficulty)
+            settingsRepository.update(updatedSettings)
+            trainingRepository.resetForDifficulty(current.day, difficulty, targetStep)
+            resetRuntimeProgress()
+            update {
+                it.copy(
+                    loading = false,
+                    step = targetStep,
+                    lesson = lesson,
+                    settings = updatedSettings,
+                    transcriptVisible = false,
+                    listeningPlaying = false,
+                    listenedOnce = false,
+                    listeningSentenceIndex = 0,
+                    selectedAnswers = emptyMap(),
+                    questionsChecked = false,
+                    repeatIndex = 0,
+                    repeatResults = emptyList(),
+                    repeatComparison = null,
+                    turns = emptyList(),
+                    quickFixes = emptyList(),
+                    quickFixIndex = 0,
+                    quickFixRecognized = null,
+                    speakingStatus = SpeakingStatus.IDLE,
+                    speechPreparationProgress = null,
+                    textInput = "",
+                    retellingSegments = emptyList(),
+                    retellingFeedback = null,
+                    review = null,
+                    metrics = TrainingMetrics(),
+                    error = null,
+                )
+            }
+        } catch (error: Throwable) {
+            update { it.copy(loading = false, error = friendlyError(error)) }
         }
     }
 
@@ -176,6 +328,11 @@ class TrainingViewModel @Inject constructor(
         tts.onDone = null; tts.speak(sentence, speechRate(state.value))
     }
     fun skipRepeatSentence() = advanceRepeat("")
+    fun skipRepeatPractice() = viewModelScope.launch {
+        speech.cancel()
+        tts.stop()
+        moveTo(TrainingStep.SPEAKING)
+    }
     fun confirmRepeat() = advanceRepeat(state.value.repeatComparison?.recognized.orEmpty())
     private fun showRepeatComparison(recognized: String) {
         val target = state.value.repeatSentences.getOrNull(state.value.repeatIndex) ?: return
@@ -189,7 +346,12 @@ class TrainingViewModel @Inject constructor(
     }
 
     fun startMic() {
-        if (state.value.speakingStatus in listOf(SpeakingStatus.WAITING_FOR_AI, SpeakingStatus.RECOGNIZING)) return
+        if (state.value.speakingStatus in listOf(
+                SpeakingStatus.PREPARING,
+                SpeakingStatus.WAITING_FOR_AI,
+                SpeakingStatus.RECOGNIZING,
+            )
+        ) return
         tts.stop(); micStartedAt = System.currentTimeMillis()
         if (lastAiFinishedAt > 0) responseDelays += (micStartedAt - lastAiFinishedAt).coerceAtLeast(0)
         speech.start()
@@ -230,7 +392,14 @@ class TrainingViewModel @Inject constructor(
         runCatching {
             val reply = aiRepository.continueConversation(ConversationContext(state.value.day, lesson.title, state.value.settings.difficulty,
                 lesson.speakingScenario, lesson.expressions.map { it.expression }, state.value.turns.takeLast(10), text))
-            val correctedUser = user.copy(correction = reply.correction.takeIf { it.type != CorrectionType.NONE }, betterExpression = reply.betterExpression)
+            val correction = reply.correction.takeIf { it.type != CorrectionType.NONE }
+            val betterExpression = reply.betterExpression.trim().ifBlank {
+                correction?.corrected.orEmpty()
+            }
+            val correctedUser = user.copy(
+                correction = correction,
+                betterExpression = betterExpression,
+            )
             val ai = ConversationTurn(day = state.value.day, turnIndex = state.value.turns.size, role = "ai", text = reply.replyEnglish)
             trainingRepository.saveTurn(correctedUser); trainingRepository.saveTurn(ai)
             targetUsage += reply.usedTargetExpressions.count { used -> lesson.expressions.any { it.expression.equals(used, true) } }
@@ -304,7 +473,10 @@ class TrainingViewModel @Inject constructor(
             .onFailure { error -> update { it.copy(loading = false, error = friendlyError(error)) } }
     }
 
-    fun clearError() = update { it.copy(error = null, speakingStatus = SpeakingStatus.IDLE) }
+    fun clearError() {
+        speech.consumeResult()
+        update { it.copy(error = null, speakingStatus = SpeakingStatus.IDLE, speechPreparationProgress = null) }
+    }
     fun previousStep() = viewModelScope.launch {
         val previous = TrainingStep.entries.getOrNull(state.value.stepNumber - 2) ?: return@launch
         tts.stop()
@@ -329,6 +501,15 @@ class TrainingViewModel @Inject constructor(
         val metrics = TrainingMetricsCalculator.calculate(s.metrics.listeningCorrect, s.metrics.listeningTotal, s.metrics.speakingMillis,
             s.turns.filter { it.role == "user" }, responseDelays, targetUsage, s.retellingSegments.joinToString(" "))
         update { it.copy(metrics = metrics) }; trainingRepository.updateMetrics(s.day, metrics)
+    }
+    private fun resetRuntimeProgress() {
+        responseDelays.clear()
+        targetUsage = 0
+        lastAiFinishedAt = 0L
+        micStartedAt = 0L
+        aiRequestInFlight = false
+        lastSubmittedText = ""
+        lastSubmittedAt = 0L
     }
     private fun update(block: (TrainingUiState) -> TrainingUiState) { mutableState.update(block) }
     private fun speechRate(state: TrainingUiState): Float =

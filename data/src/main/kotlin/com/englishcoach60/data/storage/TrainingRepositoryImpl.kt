@@ -39,6 +39,8 @@ class TrainingRepositoryImpl(
 
     override suspend fun updateStep(day: Int, step: TrainingStep) = dao.updateStep(day, step.name)
     override suspend fun updateDifficulty(day: Int, difficulty: Int) = dao.updateDifficulty(day, difficulty.coerceIn(1, 4))
+    override suspend fun resetForDifficulty(day: Int, difficulty: Int, step: TrainingStep) =
+        dao.resetTrainingForDifficulty(day, difficulty.coerceIn(1, 4), step.name)
     override suspend fun updateMetrics(day: Int, metrics: TrainingMetrics) {
         dao.trainingDay(day)?.let { dao.upsertTrainingDay(metrics.applyTo(it)) }
     }

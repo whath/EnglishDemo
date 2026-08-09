@@ -49,6 +49,7 @@ data class DailyLesson(
     val questions: List<ListeningQuestion>,
     val speakingScenario: SpeakingScenario,
     val retellingPrompt: String,
+    val difficulty: Int = 1,
 )
 
 @Serializable

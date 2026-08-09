@@ -1,0 +1,10 @@
+sherpa-onnx 1.13.4
+Copyright the sherpa-onnx contributors.
+Licensed under the Apache License, Version 2.0.
+https://github.com/k2-fsa/sherpa-onnx
+
+NVIDIA Parakeet-TDT 0.6B v2 int8 English speech recognition model
+Pinned model revision: b9bd32696df49cbb1e7e499238a22804c82f9ef7
+Licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
+https://huggingface.co/nvidia/parakeet-tdt-0.6b-v2
+https://huggingface.co/csukuangfj/sherpa-onnx-nemo-parakeet-tdt-0.6b-v2-int8

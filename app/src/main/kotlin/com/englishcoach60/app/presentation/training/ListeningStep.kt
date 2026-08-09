@@ -13,10 +13,13 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import com.englishcoach60.designsystem.*
+import com.englishcoach60.domain.training.TrainingPlan
 
 @Composable
 fun ListeningStep(state: TrainingUiState, viewModel: TrainingViewModel) {
     val lesson = state.lesson ?: return
+    val coachRate = TrainingPlan.ttsRate(state.day, state.settings.difficulty)
+    val selectedRate = state.settings.ttsRateOverride ?: coachRate
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(20.dp), verticalArrangement = Arrangement.spacedBy(20.dp)) {
         SectionLabel("First, just listen")
         Text(lesson.title, style = MaterialTheme.typography.headlineMedium)
@@ -26,15 +29,37 @@ fun ListeningStep(state: TrainingUiState, viewModel: TrainingViewModel) {
             shape = MaterialTheme.shapes.extraLarge,
             colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.primaryContainer),
         ) {
-          Column(Modifier.padding(22.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceEvenly, verticalAlignment = Alignment.CenterVertically) {
-                FilledTonalIconButton(onClick = { viewModel.playListening(replay = true) }, modifier = Modifier.size(58.dp)) { Icon(Icons.Outlined.Replay, "Replay", Modifier.size(27.dp)) }
-                FilledIconButton(onClick = { if (state.listeningPlaying) viewModel.stopListening() else viewModel.playListening() }, modifier = Modifier.size(78.dp)) {
-                    Icon(if (state.listeningPlaying) Icons.Outlined.Stop else Icons.Filled.PlayArrow, if (state.listeningPlaying) "Stop" else "Play", Modifier.size(38.dp))
+          Column(Modifier.padding(20.dp), horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.Center, verticalAlignment = Alignment.CenterVertically) {
+                FilledTonalIconButton(onClick = { viewModel.playListening(replay = true) }, modifier = Modifier.size(52.dp)) { Icon(Icons.Outlined.Replay, "Replay", Modifier.size(24.dp)) }
+                Spacer(Modifier.width(28.dp))
+                FilledIconButton(onClick = { if (state.listeningPlaying) viewModel.stopListening() else viewModel.playListening() }, modifier = Modifier.size(72.dp)) {
+                    Icon(if (state.listeningPlaying) Icons.Outlined.Stop else Icons.Filled.PlayArrow, if (state.listeningPlaying) "Stop" else "Play", Modifier.size(34.dp))
                 }
-                Column { FilterChip(selected = (state.settings.ttsRateOverride ?: com.englishcoach60.domain.training.TrainingPlan.ttsRate(state.day)) == .85f, onClick = { viewModel.setTtsRate(.85f) }, label = { Text("0.85x") }); FilterChip(selected = state.settings.ttsRateOverride == 1f, onClick = { viewModel.setTtsRate(1f) }, label = { Text("1.0x") }) }
             }
             Text(if (state.listeningPlaying) "Listening… sentence ${state.listeningSentenceIndex + 1}" else "Tap play and focus on the main idea.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            HorizontalDivider(color = MaterialTheme.colorScheme.onPrimaryContainer.copy(alpha = .12f))
+            Text("Playback speed", style = MaterialTheme.typography.labelMedium, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FilterChip(
+                    selected = selectedRate == coachRate,
+                    onClick = { viewModel.setTtsRate(coachRate) },
+                    label = { Text("Coach") },
+                    modifier = Modifier.weight(1f),
+                )
+                FilterChip(
+                    selected = selectedRate == .85f,
+                    onClick = { viewModel.setTtsRate(.85f) },
+                    label = { Text("0.85×") },
+                    modifier = Modifier.weight(1f),
+                )
+                FilterChip(
+                    selected = selectedRate == 1f,
+                    onClick = { viewModel.setTtsRate(1f) },
+                    label = { Text("1.0×") },
+                    modifier = Modifier.weight(1f),
+                )
+            }
           }
         }
         TextButton(onClick = viewModel::toggleTranscript) { Text(if (state.transcriptVisible) "Hide Transcript" else "Show Transcript") }

@@ -6,10 +6,10 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.ArrowBack
+import androidx.compose.material.icons.automirrored.outlined.VolumeUp
 import androidx.compose.material.icons.outlined.BookmarkAdd
 import androidx.compose.material.icons.outlined.Search
-import androidx.compose.material.icons.outlined.VolumeUp
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -25,6 +25,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.englishcoach60.designsystem.CoachCard
 import com.englishcoach60.designsystem.SectionLabel
+import com.englishcoach60.domain.language.containsHanCharacters
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -38,7 +39,7 @@ fun SearchScreen(viewModel: SearchViewModel, onBack: () -> Unit) {
         topBar = {
             TopAppBar(
                 title = { Text("Word Studio") },
-                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.Outlined.ArrowBack, "Back") } },
+                navigationIcon = { IconButton(onClick = onBack) { Icon(Icons.AutoMirrored.Outlined.ArrowBack, "Back") } },
             )
         },
     ) { padding ->
@@ -47,13 +48,13 @@ fun SearchScreen(viewModel: SearchViewModel, onBack: () -> Unit) {
             verticalArrangement = Arrangement.spacedBy(18.dp),
         ) {
             Text("Find the words you want to use", style = MaterialTheme.typography.headlineMedium)
-            Text("Meaning, pronunciation, and a practical example — in one place.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+            Text("中文查英文，English 查中文，并提供发音与实用例句。", color = MaterialTheme.colorScheme.onSurfaceVariant)
 
             OutlinedTextField(
                 value = state.query,
                 onValueChange = viewModel::setQuery,
                 modifier = Modifier.fillMaxWidth().focusRequester(focusRequester),
-                placeholder = { Text("Try “confident” or “figure out”") },
+                placeholder = { Text("试试“自信”或“confident”") },
                 leadingIcon = { Icon(Icons.Outlined.Search, null) },
                 trailingIcon = {
                     FilledIconButton(
@@ -87,42 +88,55 @@ fun SearchScreen(viewModel: SearchViewModel, onBack: () -> Unit) {
                             Text("Looking for a useful, natural example…", color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                     }
-                    result != null -> CoachCard(Modifier.fillMaxWidth()) {
-                        Row(verticalAlignment = Alignment.Top) {
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                Text(result.word, style = MaterialTheme.typography.displaySmall, fontWeight = FontWeight.SemiBold)
-                                Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    if (result.phonetic.isNotBlank()) Text(result.phonetic, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
-                                    if (result.partOfSpeech.isNotBlank()) Text(result.partOfSpeech, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    result != null -> {
+                        val isChineseQuery = state.query.containsHanCharacters()
+                        CoachCard(Modifier.fillMaxWidth()) {
+                            Row(verticalAlignment = Alignment.Top) {
+                                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                    SectionLabel(if (isChineseQuery) "中文 → English" else "English → 中文")
+                                    Text(
+                                        if (isChineseQuery) result.word else result.meaningZh,
+                                        style = MaterialTheme.typography.displaySmall,
+                                        fontWeight = FontWeight.SemiBold,
+                                    )
+                                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        if (!isChineseQuery) {
+                                            Text(result.word, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                                        }
+                                        if (result.phonetic.isNotBlank()) Text(result.phonetic, color = MaterialTheme.colorScheme.primary, style = MaterialTheme.typography.titleMedium)
+                                        if (result.partOfSpeech.isNotBlank()) Text(result.partOfSpeech, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                                    }
+                                }
+                                FilledTonalIconButton(onClick = viewModel::speakWord) { Icon(Icons.AutoMirrored.Outlined.VolumeUp, "Play pronunciation") }
+                            }
+                            HorizontalDivider()
+                            if (isChineseQuery) {
+                                SectionLabel("中文释义")
+                                Text(result.meaningZh, style = MaterialTheme.typography.titleLarge)
+                            }
+                            if (result.definitionEnglish.isNotBlank()) Text(result.definitionEnglish, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Surface(color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .55f), shape = MaterialTheme.shapes.medium) {
+                                Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    Row(verticalAlignment = Alignment.CenterVertically) {
+                                        SectionLabel("Example")
+                                        Spacer(Modifier.weight(1f))
+                                        IconButton(onClick = viewModel::speakExample) { Icon(Icons.AutoMirrored.Outlined.VolumeUp, "Play example") }
+                                    }
+                                    Text(result.example, style = MaterialTheme.typography.titleMedium)
+                                    if (result.exampleZh.isNotBlank()) Text(result.exampleZh, color = MaterialTheme.colorScheme.onSurfaceVariant)
                                 }
                             }
-                            FilledTonalIconButton(onClick = viewModel::speakWord) { Icon(Icons.Outlined.VolumeUp, "Play pronunciation") }
-                        }
-                        HorizontalDivider()
-                        SectionLabel("Meaning")
-                        Text(result.meaningZh, style = MaterialTheme.typography.titleLarge)
-                        if (result.definitionEnglish.isNotBlank()) Text(result.definitionEnglish, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        Surface(color = MaterialTheme.colorScheme.secondaryContainer.copy(alpha = .55f), shape = MaterialTheme.shapes.medium) {
-                            Column(Modifier.fillMaxWidth().padding(16.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                Row(verticalAlignment = Alignment.CenterVertically) {
-                                    SectionLabel("Example")
-                                    Spacer(Modifier.weight(1f))
-                                    IconButton(onClick = viewModel::speakExample) { Icon(Icons.Outlined.VolumeUp, "Play example") }
+                            if (result.relatedExpressions.isNotEmpty()) {
+                                SectionLabel("Useful combinations")
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                                    result.relatedExpressions.forEach { related -> AssistChip(onClick = { viewModel.setQuery(related) }, label = { Text(related) }) }
                                 }
-                                Text(result.example, style = MaterialTheme.typography.titleMedium)
-                                if (result.exampleZh.isNotBlank()) Text(result.exampleZh, color = MaterialTheme.colorScheme.onSurfaceVariant)
                             }
-                        }
-                        if (result.relatedExpressions.isNotEmpty()) {
-                            SectionLabel("Useful combinations")
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                                result.relatedExpressions.forEach { related -> AssistChip(onClick = { viewModel.setQuery(related) }, label = { Text(related) }) }
+                            Button(onClick = viewModel::saveResult, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
+                                Icon(Icons.Outlined.BookmarkAdd, null)
+                                Spacer(Modifier.width(8.dp))
+                                Text("Save to My Expressions")
                             }
-                        }
-                        Button(onClick = viewModel::saveResult, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
-                            Icon(Icons.Outlined.BookmarkAdd, null)
-                            Spacer(Modifier.width(8.dp))
-                            Text("Save to My Expressions")
                         }
                     }
                     else -> CoachCard(Modifier.fillMaxWidth()) {

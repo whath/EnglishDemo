@@ -2,6 +2,7 @@ package com.englishcoach60.database
 
 import android.content.Context
 import androidx.room3.Database
+import androidx.room3.AutoMigration
 import androidx.room3.Room
 import androidx.room3.RoomDatabase
 import androidx.sqlite.driver.bundled.BundledSQLiteDriver
@@ -17,7 +18,11 @@ import kotlinx.coroutines.Dispatchers
         DailyReviewEntity::class,
         AppProgressEntity::class,
     ],
-    version = 1,
+    version = 3,
+    autoMigrations = [
+        AutoMigration(from = 1, to = 2),
+        AutoMigration(from = 2, to = 3),
+    ],
     exportSchema = true,
 )
 abstract class CoachDatabase : RoomDatabase() {
